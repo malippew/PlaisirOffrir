@@ -1,7 +1,0 @@
-*.json
-.venv/
-__pycache__/
-*.pyc
-*.log
-.vscode/
-*.sqlite
