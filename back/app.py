@@ -14,9 +14,11 @@ app.json.ensure_ascii = False  # Pour garder les caractères spéciaux (accents,
 @app.route("/api/listes", methods=["GET"])
 def get_listes():
     try:
-        # Exécuter le script pour s'assurer que les données sont à jour
-        print("Exécution du script de scraping...")
         main()
+
+        filepath = os.path.join("data", "listes_choisir_offrir.json")
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"Fichier JSON introuvable : {filepath}")
 
         # Charger le fichier JSON mis à jour
         with open("data/listes_choisir_offrir.json", "r", encoding="utf-8") as f:

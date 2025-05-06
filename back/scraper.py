@@ -233,6 +233,9 @@ def save_to_json(data: Dict, filename: str) -> None:
     """
     try:
         validate(instance=data, schema=OUTPUT_SCHEMA)
+
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
         logger.info("Data successfully written to %s", filename)
