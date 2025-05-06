@@ -1,4 +1,3 @@
-import time
 import os
 import re
 import json
@@ -8,7 +7,6 @@ from typing import List, Union, Dict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
-import requests_cache
 from bs4 import BeautifulSoup
 from jsonschema import validate, ValidationError
 
@@ -22,8 +20,6 @@ logger = logging.getLogger(__name__)
 
 # Constants
 BASE_URL = "https://choisiroffrir.com"
-CACHE_NAME = "choisir_offrir_cache"
-CACHE_EXPIRE = 3600  # seconds
 OUTPUT_FILE = "data/listes_choisir_offrir.json"
 MAX_WORKERS = 5
 
@@ -67,14 +63,8 @@ OUTPUT_SCHEMA = {
     "required": ["number_of_lists", "lists"],
 }
 
-# Initialize cached session
-session = requests_cache.CachedSession(
-    cache_name=CACHE_NAME,
-    backend="sqlite",
-    expire_after=CACHE_EXPIRE,
-    allowable_codes=(200, 404),
-    stale_if_error=True,
-)
+# Initialize session
+session = requests.Session()
 
 
 @dataclass
@@ -106,7 +96,6 @@ class PresentList:
 def get_soup(url: str, timeout: int = 10) -> BeautifulSoup:
     """
     Fetch content and return BeautifulSoup parser.
-    Retries once if cache deserialization fails.
     Raises HTTPError on bad status.
     """
     try:
@@ -116,32 +105,8 @@ def get_soup(url: str, timeout: int = 10) -> BeautifulSoup:
         )
         response.raise_for_status()
     except (requests.RequestException, Exception) as err:
-        # Handle cache deserialization or SQLite errors by clearing cache entry and retrying once
-        try:
-            logger.warning(
-                "Error fetching from cache or network, clearing cache for URL and retrying: %s",
-                url,
-            )
-            # Suppression manuelle de l’entrée du cache
-            try:
-                cache_key = session.cache.create_key(url)
-                if isinstance(session.cache.responses, dict):
-                    session.cache.responses.pop(cache_key, None)
-                if isinstance(session.cache.redirects, dict):
-                    session.cache.redirects.pop(cache_key, None)
-
-                logger.info("Cache manually cleared for URL: %s", url)
-            except Exception as e:
-                logger.warning("Failed to clear cache for URL %s: %s", url, e)
-
-            # Nouvelle tentative après nettoyage
-            response = session.get(
-                url, headers={"User-Agent": "Mozilla/5.0"}, timeout=timeout
-            )
-            response.raise_for_status()
-        except Exception as err2:
-            logger.error("Failed to fetch URL %s after clearing cache: %s", url, err2)
-            raise
+        logger.error("Error fetching URL %s: %s", url, err)
+        raise
     content = response.content or b""
     if not isinstance(content, (bytes, bytearray)):
         content = str(content).encode("utf-8", errors="ignore")
