@@ -1,9 +1,13 @@
 from flask import Flask, jsonify
+from flask_cors import CORS
 import json
 import os
 from scraper import main
 
 app = Flask(__name__)
+
+# Autoriser toutes les origines pour /api/*
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 
 app.json.sort_keys = False  # Pour garder l'ordre des clés dans le JSON
